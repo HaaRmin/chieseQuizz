@@ -214,16 +214,6 @@
             line-height: 1.4;
         }
 
-        .question-counter {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-        }
-
         .answers-container {
             display: flex;
             flex-direction: column;
@@ -479,7 +469,6 @@
 
         <div class="quiz-container">
             <div class="question-box">
-                <div class="question-counter" id="questionCounter"></div>
                 <div class="question-text" id="questionDisplay"></div>
             </div>
 
@@ -505,9 +494,11 @@
         let nextQuestionTimeout;
         let currentQuestionIndex = 0;
         let quizQuestions = [];
+        const STORAGE_KEY = 'chineseQuizConfigV1';
 
         setupCorrectCheckboxes();
         setupFooterBackNavigation();
+        setupConfigPersistence();
 
         function setupCorrectCheckboxes() {
             const checkboxes = document.querySelectorAll('.correct-checkbox');
@@ -519,8 +510,98 @@
                     document.querySelectorAll(`.correct-checkbox[data-section="${section}"]`).forEach(cb => {
                         if (cb !== event.target) cb.checked = false;
                     });
+                    saveConfigToStorage();
                 });
             });
+        }
+
+        function setupConfigPersistence() {
+            loadConfigFromStorage();
+
+            const textFields = document.querySelectorAll('#configPage input[type="text"], #configPage textarea');
+            textFields.forEach(field => {
+                field.addEventListener('input', saveConfigToStorage);
+            });
+
+            const checkboxFields = document.querySelectorAll('#configPage input[type="checkbox"]');
+            checkboxFields.forEach(field => {
+                field.addEventListener('change', saveConfigToStorage);
+            });
+        }
+
+        function saveConfigToStorage() {
+            const sections = [];
+            for (let i = 1; i <= 5; i++) {
+                sections.push({
+                    question: document.getElementById(`question${i}`).value,
+                    answers: [
+                        document.getElementById(`answer${i}_1`).value,
+                        document.getElementById(`answer${i}_2`).value,
+                        document.getElementById(`answer${i}_3`).value
+                    ],
+                    correct: [
+                        document.getElementById(`correct${i}_1`).checked,
+                        document.getElementById(`correct${i}_2`).checked,
+                        document.getElementById(`correct${i}_3`).checked
+                    ]
+                });
+            }
+
+            const payload = {
+                sections,
+                logoUrl: document.getElementById('logoUrl').value,
+                bgImageUrl: document.getElementById('bgImageUrl').value
+            };
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch (error) {
+                // Ignore storage errors (e.g., private mode or blocked storage)
+            }
+        }
+
+        function loadConfigFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+                if (!saved || !Array.isArray(saved.sections)) return;
+
+                for (let i = 1; i <= 5; i++) {
+                    const section = saved.sections[i - 1];
+                    if (!section) continue;
+
+                    if (typeof section.question === 'string') {
+                        document.getElementById(`question${i}`).value = section.question;
+                    }
+
+                    if (Array.isArray(section.answers)) {
+                        for (let j = 1; j <= 3; j++) {
+                            const answer = section.answers[j - 1];
+                            if (typeof answer === 'string') {
+                                document.getElementById(`answer${i}_${j}`).value = answer;
+                            }
+                        }
+                    }
+
+                    if (Array.isArray(section.correct)) {
+                        const normalized = section.correct.slice(0, 3).map(Boolean);
+                        const firstChecked = normalized.findIndex(Boolean);
+                        for (let j = 1; j <= 3; j++) {
+                            document.getElementById(`correct${i}_${j}`).checked = firstChecked === j - 1;
+                        }
+                    }
+                }
+
+                if (typeof saved.logoUrl === 'string') {
+                    document.getElementById('logoUrl').value = saved.logoUrl;
+                }
+                if (typeof saved.bgImageUrl === 'string') {
+                    document.getElementById('bgImageUrl').value = saved.bgImageUrl;
+                }
+            } catch (error) {
+                // Ignore malformed saved values
+            }
         }
 
         function launchQuiz() {
@@ -622,7 +703,6 @@
             const currentQuestion = quizQuestions[index];
             const answerButtons = document.querySelectorAll('.answer-btn');
 
-            document.getElementById('questionCounter').textContent = `Question ${index + 1} of ${quizQuestions.length}`;
             document.getElementById('questionDisplay').textContent = currentQuestion.question;
 
             answerButtons.forEach((btn, btnIndex) => {
