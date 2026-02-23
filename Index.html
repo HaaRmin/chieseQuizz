@@ -261,11 +261,13 @@
             opacity: 0;
             transform: translateY(20px);
             transition: all 0.5s ease-in-out;
+            pointer-events: none;
         }
 
         .footer-container.show {
             opacity: 1;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         .follow-message {
@@ -505,6 +507,7 @@
         let quizQuestions = [];
 
         setupCorrectCheckboxes();
+        setupFooterBackNavigation();
 
         function setupCorrectCheckboxes() {
             const checkboxes = document.querySelectorAll('.correct-checkbox');
@@ -597,6 +600,24 @@
             renderQuestion(currentQuestionIndex);
         }
 
+        function setupFooterBackNavigation() {
+            const footer = document.getElementById('footerContainer');
+            footer.addEventListener('click', () => {
+                const isLastQuestion = currentQuestionIndex === quizQuestions.length - 1;
+                if (!footer.classList.contains('show') || !isLastQuestion) return;
+                returnToConfig();
+            });
+        }
+
+        function returnToConfig() {
+            clearInterval(countdown);
+            clearTimeout(nextQuestionTimeout);
+
+            document.getElementById('footerContainer').classList.remove('show');
+            document.getElementById('quizPage').style.display = 'none';
+            document.getElementById('configPage').style.display = 'flex';
+        }
+
         function renderQuestion(index) {
             const currentQuestion = quizQuestions[index];
             const answerButtons = document.querySelectorAll('.answer-btn');
@@ -634,16 +655,17 @@
             const answerBtns = document.querySelectorAll('.answer-btn');
             const currentQuestion = quizQuestions[currentQuestionIndex];
             answerBtns[currentQuestion.correctAnswerIndex].classList.add('correct');
-            
-            // Show footer with follow message and logo
-            document.getElementById('footerContainer').classList.add('show');
 
             if (currentQuestionIndex < quizQuestions.length - 1) {
                 nextQuestionTimeout = setTimeout(() => {
                     currentQuestionIndex++;
                     renderQuestion(currentQuestionIndex);
                 }, 2000);
+                return;
             }
+
+            // Show footer only after the final question
+            document.getElementById('footerContainer').classList.add('show');
         }
     </script>
 </body>
